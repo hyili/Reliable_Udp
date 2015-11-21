@@ -4,8 +4,8 @@
 #include <string.h>
 
 int main() {
-	int len = 1000, i;
-	char buffer[1000] = {};
+	int len = 5000;
+	char buffer[50000] = {};
 	FILE *ptr, *local;
 
 	ptr = fopen("i.txt", "r");

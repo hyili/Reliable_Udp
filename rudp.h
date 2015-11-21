@@ -3,9 +3,9 @@
  */
 
 #define WINDOW_SIZE 4
-#define PACKET_SIZE 1500
 #define HEADER_SIZE 21
 #define DATA_SIZE 1400
+#define PACKET_SIZE HEADER_SIZE+DATA_SIZE
 
 #define TYPE_SYN 48
 #define TYPE_ACK 49
@@ -19,7 +19,7 @@
 int global_seq_num;
 int global_buffer_len;
 struct uwindow* global_window;
-char global_buffer[DATA_SIZE + 1];
+char global_buffer[DATA_SIZE];
 
 /* udp header */
 struct uheader {
@@ -35,8 +35,8 @@ struct uheader {
 struct upacket {
 	/* header pointer */
 	struct uheader* header;
-	/* packet content (+1 for '\n') */
-	char data[DATA_SIZE + 1];
+	/* packet content */
+	char data[DATA_SIZE];
 };
 
 /* udp packet window */

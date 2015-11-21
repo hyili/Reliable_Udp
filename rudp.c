@@ -62,7 +62,7 @@ int set_alarm(int time, char* buffer, int buffer_len) {
 
 	/* this is for handshake transmission */
 	if ((buffer != NULL) && (buffer_len != -1)) {
-		memset(global_buffer, 0, DATA_SIZE+1);
+		memset(global_buffer, 0, DATA_SIZE);
 		bstrncpy(global_buffer, buffer, buffer_len<DATA_SIZE?buffer_len:DATA_SIZE);
 		global_buffer_len = buffer_len;
 	}
@@ -93,7 +93,7 @@ struct upacket* new_packet(char* data, int len, char type, int seq_num) {
 	int i;
 
 	packet->header = header;
-	memset(packet->data, 0, DATA_SIZE+1);
+	memset(packet->data, 0, DATA_SIZE);
 	if (data != NULL) {
 		if (len <= DATA_SIZE) {
 			bstrncpy(packet->data, data, len);
@@ -177,7 +177,7 @@ int rm_window(struct uwindow* window) {
 int packet_to_string(struct upacket* packet, char* data, int len) {
 	//snprintf(data, len, "%10d%c%10d%s", packet->header->seq_num, packet->header->type, packet->header->len, packet->data);
 	snprintf(data, len, "%10d%c%10d", packet->header->seq_num, packet->header->type, packet->header->len);
-	bstrncpy(data+HEADER_SIZE, packet->data, len-HEADER_SIZE);
+	bstrncpy(data+HEADER_SIZE, packet->data, len);
 	return len;
 }
 
@@ -685,7 +685,7 @@ int send_packet(struct uwindow* window, struct upacket* packet) {
 	socklen_t socket_len = sizeof(*remote_addr);
 
 	char* mesg = (char*)malloc(11*sizeof(char));
-	char* buffer = (char*)malloc((DATA_SIZE + 1)*sizeof(char));
+	char* buffer = (char*)malloc((DATA_SIZE)*sizeof(char));
 	int buffer_len = 0;
 
 	memset(buffer, 0, DATA_SIZE);
@@ -698,7 +698,7 @@ int send_packet(struct uwindow* window, struct upacket* packet) {
 	buffer_len = packet_to_string(packet, buffer, packet->header->len);
 
 	/* DEBUG message */
-	fprintf(stderr, "DEBUG send_packet\n");
+	fprintf(stderr, "DEBUG send_packet %d\n", packet->header->len);
 	//fprintf(stderr, "%s\n", packet->data);
 	//fprintf(stderr, "%d\n", buffer_len);
 	/* DEBUG message */
@@ -728,18 +728,18 @@ int recv_packet(struct uwindow* window, int type) {
 	int offset = 0, index = 0, i;
 	
 	char* mesg = (char*)malloc(11*sizeof(char));
-	char* buffer = (char*)malloc((DATA_SIZE + 1)*sizeof(char));
+	char* buffer = (char*)malloc((PACKET_SIZE)*sizeof(char));
 	int buffer_len = 0;
 	struct upacket *packet_s, *packet_r;
 
-	memset(buffer, 0, DATA_SIZE);
+	memset(buffer, 0, PACKET_SIZE);
 	memset(mesg, 0, 10);
 
 	/* DEBUG message */
 	fprintf(stderr, "DEBUG recv_packet\n");
 	/* DEBUG message */
 
-	if (recvfrom(socket_fd, buffer, DATA_SIZE + 1, 0, (struct sockaddr*)remote_addr, &socket_len) < 0) {
+	if (recvfrom(socket_fd, buffer, PACKET_SIZE, 0, (struct sockaddr*)remote_addr, &socket_len) < 0) {
 		fprintf(stderr, "%s\n", buffer);
 		fprintf(stderr, "%d %s\n", errno, strerror(errno));
 		fprintf(stderr, "read from client failed\n");
@@ -749,7 +749,7 @@ int recv_packet(struct uwindow* window, int type) {
 
 	packet_r = string_to_packet(buffer);
 
-	memset(buffer, 0, DATA_SIZE);
+	memset(buffer, 0, PACKET_SIZE);
 
 	/* DEBUG message */
 	fprintf(stderr, "DEBUG recv_packet\n");
@@ -764,13 +764,13 @@ int recv_packet(struct uwindow* window, int type) {
 		/* ACK the received packet */
 		/*snprintf(mesg, 11, "%10d", packet_r->header->seq_num);
 		packet_s = new_packet(mesg, 10, TYPE_ACK, 0);
-		buffer_len = packet_to_string(packet_s, buffer, DATA_SIZE);*/
+		buffer_len = packet_to_string(packet_s, buffer, PACKET_SIZE);*/
 		int ACK_index;
 		for (i = window->head, ACK_index = i; i != window->tail; i=++i<WINDOW_SIZE?i:0) {
 			if (i ==  window->tail-1<0?WINDOW_SIZE-1:window->tail-1 || window->packet_ACK[i] == -1) {
 				snprintf(mesg, 11, "%10d", window->packet[ACK_index]->header->seq_num);
 				packet_s = new_packet(mesg, 10, TYPE_ACK, 0);
-				buffer_len = packet_to_string(packet_s, buffer, DATA_SIZE);
+				buffer_len = packet_to_string(packet_s, buffer, PACKET_SIZE);
 			}
 			else {
 				ACK_index = i;
@@ -1055,7 +1055,7 @@ int rsend(char* dest, int port, char* mesg, int len) {
 	global_window = window;
 	
 	/* if the window_process returned the negative value, then do following */
-	if (window_process(window, 1, mesg, len+1) < 0) {
+	if (window_process(window, 1, mesg, len) < 0) {
 		fprintf(stderr, "send message failed\n");
 		rm_window(window);
 		window = NULL;
@@ -1105,16 +1105,13 @@ int rrecv(int port, char* mesg, int len) {
 
 	/* DEBUG message */
 	fprintf(stderr, "DEBUG\n");
-
-	//char buffer[100] = {};
-	//recvfrom(socket_fd, buffer, 100, 0, (struct sockaddr*)client_addr, &socket_len);
 	/* DEBUG message */
 
 	window = new_window(socket_fd, my_addr, client_addr);
 	global_window = window;
 
 	/* if the window_process returned the negative value, then do following */
-	if (window_process(window, 0, mesg, len+1) < 0) {
+	if (window_process(window, 0, mesg, len) < 0) {
 		fprintf(stderr, "receive message failed\n");
 		rm_window(window);
 		window = NULL;
@@ -1122,7 +1119,7 @@ int rrecv(int port, char* mesg, int len) {
 	}
 
 	/* extract the length of the data */
-	recv_len = window->file_size - 1;
+	recv_len = window->file_size;
 
 	/* if the return value is 0, then return 0, and mesg would contain the received data */
 	rm_window(window);
