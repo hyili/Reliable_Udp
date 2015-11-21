@@ -12,6 +12,7 @@
 #define TYPE_NAK 50
 #define TYPE_FIN 51
 #define TYPE_RST 52
+#define TYPE_FINACK 53
 
 #define RETRANSMISSION_TIME 500000
 
@@ -42,7 +43,10 @@ struct upacket {
 struct uwindow {
 	/* packet array for easily fetching the specific packet */
 	struct upacket* packet[WINDOW_SIZE];
-	/* packet which has been ACKed */
+	/* packet which has been ACKed
+	 * for receiver, -1 : no packet, 0 : packet stored
+	 * for sender, -1 : no SYN/ACK packet send/recv, 0 : packet is sent, but not ACKed, 1 : packet ACKed
+	 */
 	char packet_ACK[WINDOW_SIZE];
 	/* head index */
 	int head;
@@ -64,6 +68,7 @@ struct uwindow {
 	int first_seq_num;
 };
 
+char* bstrncpy(char* , const char*, unsigned int);
 void retransmission(int);
 int set_alarm(int, char*, int);
 int seq_num_generator();

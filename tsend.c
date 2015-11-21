@@ -1,0 +1,20 @@
+#include "rudp.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+	int len = 1000, i;
+	char buffer[1000] = {};
+	FILE *ptr, *local;
+
+	ptr = fopen("i.txt", "r");
+	local = fopen("lo.txt", "w");
+	fread(buffer, sizeof(char), len, ptr);
+	fwrite(buffer, sizeof(char), len, local);
+
+	rsend("127.0.0.1", 9999, buffer, len);
+
+	fclose(ptr);
+	return 0;
+}
